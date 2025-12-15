@@ -1,5 +1,9 @@
 # Synthetic replication games
 
+## Original publication
+
+Find the original publication alongside replication data in `/material`.
+
 ## Running experiments
 
 1. Launch an experiment using
