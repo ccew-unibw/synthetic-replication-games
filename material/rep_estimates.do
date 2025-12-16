@@ -132,7 +132,8 @@ global mod =  "i.FeatGender i.FeatEd##i.FeatJob i.FeatLang ib6.FeatCountry##i.Fe
 global ses =  "cl(CaseID)"
 
 * load data
-use "repdata.dta", clear
+*use "repdata.dta", clear
+use "C:\Users\ChristianOswald\Documents\GitLab\synthetic-replication-games\material\repdata.dta", clear
 
 ** Figure 2: 
 ** Effects of Immigrant Attributes on Probability of Being Preferred for Admission

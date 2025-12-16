@@ -1,20 +1,34 @@
 # replication code for plots 
-# (run rep_estimates.do first)
+# (run R estimates script first so txt/ is populated)
 
-rm(list=ls())
-library(foreign)
-library("ggplot2")
+rm(list = ls())
+library(ggplot2)
 
-# function to prepare data
+## ------------------------------------------------------------------
+## Directories
+## ------------------------------------------------------------------
+
+dir_txt   <- "txt"
+dir_csv   <- "csv"
+dir_plots <- "plots"
+
+if (!dir.exists(dir_txt))   dir.create(dir_txt)
+if (!dir.exists(dir_csv))   dir.create(dir_csv)
+if (!dir.exists(dir_plots)) dir.create(dir_plots)
+
+## ------------------------------------------------------------------
+## Helper: prepdata
+## ------------------------------------------------------------------
+
 prepdata <- function(d){
   
   # prep estimates
   d$var <- rownames(d)
   colnames(d) <- c("pe","se","var")
   d$order <- 1:nrow(d)
-  # compute Cis
-  d$upper <-d$pe + 1.96*d$se
-  d$lower <-d$pe - 1.96*d$se
+  # compute CIs
+  d$upper <- d$pe + 1.96 * d$se
+  d$lower <- d$pe - 1.96 * d$se
   
   # define group
   d$group <- NA
@@ -28,12 +42,25 @@ prepdata <- function(d){
   d$group[d$var %in% paste(c(1:2,"3b",4),".FeatPlans",sep="")]      <- "Job Plans"
   d$group[d$var %in% paste(c("1b",2:4),".FeatLang",sep="")]         <- "Language Skills"
   
-  # order 
-  d <- d[order(factor(d$group,levels=unique(d$group)[c(1,2,4,5,3,7,8,6,9)])),]
+  # order (with Language right after Education)
+  d <- d[order(factor(
+    d$group,
+    levels = c(
+      "Gender",
+      "Education",
+      "Language Skills",
+      "Origin",
+      "Job",
+      "Job Experience",
+      "Job Plans",
+      "Reason for Application",
+      "Prior Entry"
+    )
+  )), ]
   d$order <- 1:nrow(d)
   
   # label attributes
-  offset <- c("   ")
+  offset <- "   "
   
   d$var[d$group=="Gender"] <- paste(offset,c("female","male"))
   d$var[d$group=="Education"] <- paste(offset,c("no formal","4th grade",
@@ -72,107 +99,125 @@ prepdata <- function(d){
   
   d$var[d$group=="Prior Entry"] <- paste(offset,c("never","once as tourist",
                                                   "many times as tourist","six months with family",
-                                                  "once w/o authorization"))            
+                                                  "once w/o authorization"))
   # sub in group labels
-  dd <- data.frame(var= c("Gender:",
-                          " ",
-                          "Education:",
-                          "  ",
-                          "Language:",
-                          "   ",
-                          "Origin:",
-                          "    ",
-                          "Profession:",
-                          "     ",
-                          "Job experience:",
-                          "      ",
-                          "Job plans:",
-                          "       ",
-                          "Application reason:",
-                          "        ",
-                          "Prior trips to U.S.:"
-  ),order=c(.5,2.1,2.5,9.1,9.5,13.1,13.5,23.1,23.5,34.1,34.5,38.1,38.5,42.1, 42.5,45.1,45.5),
-                   pe=1,se=1,upper=1,lower=1,group=NA)
+  dd <- data.frame(
+    var = c(
+      "Gender:",
+      " ",
+      "Education:",
+      "  ",
+      "Language:",
+      "   ",
+      "Origin:",
+      "    ",
+      "Profession:",
+      "     ",
+      "Job experience:",
+      "      ",
+      "Job plans:",
+      "       ",
+      "Application reason:",
+      "        ",
+      "Prior trips to U.S.:"
+    ),
+    order = c(.5,2.1,2.5,9.1,9.5,13.1,13.5,23.1,23.5,34.1,34.5,38.1,38.5,42.1, 42.5,45.1,45.5),
+    pe    = 1,
+    se    = 1,
+    upper = 1,
+    lower = 1,
+    group = NA
+  )
   d <- rbind(d,dd)
-  d <-d[order(d$order),]
+  d <- d[order(d$order),]
   d$var <- factor(d$var,levels=unique(d$var)[length(d$var):1])
   return(d)
 }
 
-# theme for figures
-theme_bw1 <- function(base_size = 13, base_family = "") {
-  theme_grey(base_size = base_size, base_family = base_family) %+replace%
-    theme(
-      axis.text.x =       element_text(size = base_size, colour = "black",  hjust = .5 , vjust=1),
-      axis.text.y =       element_text(size = base_size , colour = "black", hjust = 0 , vjust=.5 ), # changes position of X axis text
-      axis.ticks =        element_line(colour = "grey50"),
-      axis.title.y =      element_text(size = base_size,angle=90,vjust=.01,hjust=.1),
-      legend.position = "none"
-    )
-}
+## ------------------------------------------------------------------
+## Theme
+## ------------------------------------------------------------------
 
-
-## Figure 2: Effects of Immigrant Attributes on Probability of Being Preferred for Admission
-ffilename <- "chosen"
-d <- read.table(paste(ffilename,".txt",sep=""))
-d <- prepdata(d)
-
-yylab  <- c("Effect on Pr(Immigrant Preferred for Admission)")
-
-p = ggplot(d,aes(y=pe,x=var))#,colour=group))
-p = p + coord_flip(ylim = c(-.3, .3))  
-p = p + geom_hline(yintercept = 0,size=.5,colour="darkgrey",linetype="solid") 
-p = p +geom_pointrange(aes(ymin=lower,ymax=upper,width=.4),position="dodge",size=.6)
-p = p + scale_y_continuous(name=yylab,breaks=round(seq(-.4,.4,.2),1),labels=c("-.4","-.2","0",".2",".4"))
-p = p + scale_x_discrete(name="")
-print(p)
-dev.off()
-
-pdf(paste("1",ffilename,".pdf",sep=""),width=10,height=12.5) 
-p = p  + theme_bw1()
-print(p)
-dev.off()
-write.csv(d[,c("pe","se","var","upper","lower","group")],
-          file=paste("1",ffilename,".csv",sep=""))
-
-## Figure C.1: Effects of Immigrant Attributes on Support for Admission
-ffilename <- "support"
-d <- read.table(paste(ffilename,".txt",sep=""))
-d <- prepdata(d)
-
-yylab <- c("Change in Pr(Immigrant Supported for Admission to U.S.)")
-
-p = ggplot(d,aes(y=pe,x=var))#,colour=group))
-p = p + coord_flip(ylim = c(-.3, .3))  
-p = p + geom_hline(yintercept = 0,size=.5,colour="darkgrey",linetype="solid") 
-p = p +geom_pointrange(aes(ymin=lower,ymax=upper,width=.4),position="dodge",size=.6)
-p = p + scale_y_continuous(name=yylab,breaks=round(seq(-.4,.4,.2),1),labels=c("-.4","-.2","0",".2",".4"))
-p = p + scale_x_discrete(name="")
-print(p)
-dev.off()
-
-pdf(paste("1",ffilename,".pdf",sep=""),width=10,height=12.5) 
-p = p  + theme_bw1()
-print(p)
-dev.off()
-write.csv(d[,c("pe","se","var","upper","lower","group")],
-          file=paste("1",ffilename,".csv",sep=""))
-
-## Figures for subsets 
-
-# theme
 theme_bw1 <- function(base_size = 10.1, base_family = "") {
   theme_grey(base_size = base_size, base_family = base_family) %+replace%
     theme(
-      axis.text.x =       element_text(size = base_size, colour = "black",  hjust = .5 , vjust=1),
-      axis.text.y =       element_text(size = base_size , colour = "black", hjust = 0 , vjust=.5 ), # changes position of X axis text
-      axis.ticks =        element_line(colour = "grey50"),
-      axis.title.y =      element_text(size = base_size,angle=90,vjust=.01,hjust=.1),
+      axis.text.x  = element_text(size = base_size, colour = "black", hjust = .5 , vjust = 1),
+      axis.text.y  = element_text(size = base_size, colour = "black", hjust = 0  , vjust = .5),
+      axis.ticks   = element_line(colour = "grey50"),
+      axis.title.y = element_text(size = base_size, angle = 90, vjust = .01, hjust = .1),
       legend.position = "none"
     )
 }
 
-yylab  <- c("Effect on Pr(Immigrant Preferred for Admission)")
+## ------------------------------------------------------------------
+## Figure 2: Effects on Pr(Chosen)
+## ------------------------------------------------------------------
+
+ffilename <- "chosen"
+d <- read.table(file.path(dir_txt, paste0(ffilename,".txt")))
+rownames(d) <- d[[1]]
+d <- d[ , -1, drop = FALSE]
+d <- prepdata(d)
+
+yylab  <- "Effect on Pr(Immigrant Preferred for Admission)"
+
+p <- ggplot(d,aes(y=pe,x=var)) +
+  coord_flip(ylim = c(-.3, .3)) +
+  geom_hline(yintercept = 0,size=.5,colour="darkgrey",linetype="solid") +
+  geom_pointrange(aes(ymin=lower,ymax=upper,width=.4),position="dodge",size=.6) +
+  scale_y_continuous(name=yylab,
+                     breaks=round(seq(-.4,.4,.2),1),
+                     labels=c("-.4","-.2","0",".2",".4")) +
+  scale_x_discrete(name="")
+print(p)
+dev.off()
+
+pdf(file.path(dir_plots, paste0("1",ffilename,".pdf")), width=10, height=12.5)
+p2 <- p + theme_bw1()
+print(p2)
+dev.off()
+
+write.csv(d[,c("pe","se","var","upper","lower","group")],
+          file=file.path(dir_csv, paste0("1",ffilename,".csv")),
+          row.names = FALSE)
+
+## ------------------------------------------------------------------
+## Figure C.1: Support outcome
+## ------------------------------------------------------------------
+
+ffilename <- "support"
+d <- read.table(file.path(dir_txt, paste0(ffilename,".txt")))
+rownames(d) <- d[[1]]
+d <- d[ , -1, drop = FALSE]
+d <- prepdata(d)
+
+yylab <- "Change in Pr(Immigrant Supported for Admission to U.S.)"
+
+p <- ggplot(d,aes(y=pe,x=var)) +
+  coord_flip(ylim = c(-.3, .3)) +
+  geom_hline(yintercept = 0,size=.5,colour="darkgrey",linetype="solid") +
+  geom_pointrange(aes(ymin=lower,ymax=upper,width=.4),position="dodge",size=.6) +
+  scale_y_continuous(name=yylab,
+                     breaks=round(seq(-.4,.4,.2),1),
+                     labels=c("-.4","-.2","0",".2",".4")) +
+  scale_x_discrete(name="")
+print(p)
+dev.off()
+
+pdf(file.path(dir_plots, paste0("1",ffilename,".pdf")), width=10, height=12.5)
+p2 <- p + theme_bw1()
+print(p2)
+dev.off()
+
+write.csv(d[,c("pe","se","var","upper","lower","group")],
+          file=file.path(dir_csv, paste0("1",ffilename,".csv")),
+          row.names = FALSE)
+
+## ------------------------------------------------------------------
+## Figures for subsets
+## ------------------------------------------------------------------
+
+yylab  <- "Effect on Pr(Immigrant Preferred for Admission)"
 
 # list of subsets
 dl <- list()
@@ -228,10 +273,10 @@ dl[[9]] <- list(subfilename="ideology",
                 slabels=c("Liberal","Conservative"))
 
 dl[[10]] <- list(subfilename="opposeimmig",
-                subsetnlabel="",
-                slevels=1:2,
-                slabels=c("Does not Support Reducing Immigration",
-                          "Supports Reducing Immigration"))
+                 subsetnlabel="",
+                 slevels=1:2,
+                 slabels=c("Does not Support Reducing Immigration",
+                           "Supports Reducing Immigration"))
 
 dl[[11]] <- list(subfilename="gender",
                  subsetnlabel="",
@@ -270,107 +315,124 @@ dl[[16]] <- list(subfilename="countertypical",
 
 
 dl[[17]] <- list(subfilename="hispanicornot",
-                subsetnlabel="",
-                slevels=1:2,
-                slabels=c("Non-Hispanic","Hispanic"))
+                 subsetnlabel="",
+                 slevels=1:2,
+                 slabels=c("Non-Hispanic","Hispanic"))
 
-# do the plots
+# do the plots for subsets
 for(kk in 1:length(dl)){
-
-filenames <- paste(paste(dl[[kk]]$subfilename,
-                         dl[[kk]]$slevels,sep=""),
-                   ".txt",sep="")
-
-alldata <- list()
-for(i in 1:length(filenames)){
-  d <- read.table(filenames[i])
-  alldata[[i]] <- prepdata(d)
-  alldata[[i]]$subset      <- dl[[kk]]$slevels[i]
-  alldata[[i]]$subsetlabel <- paste(dl[[kk]]$subsetnlabel,
-                                    dl[[kk]]$slabels[i],sep=" ")
+  
+  filenames <- file.path(
+    dir_txt,
+    paste0(dl[[kk]]$subfilename, dl[[kk]]$slevels, ".txt")
+  )
+  
+  alldata <- list()
+  for(i in 1:length(filenames)){
+    d_raw <- read.table(filenames[i])
+    rownames(d_raw) <- d_raw[[1]]
+    d_raw <- d_raw[ , -1, drop = FALSE]
+    alldata[[i]] <- prepdata(d_raw)
+    alldata[[i]]$subset      <- dl[[kk]]$slevels[i]
+    alldata[[i]]$subsetlabel <- paste(dl[[kk]]$subsetnlabel,
+                                      dl[[kk]]$slabels[i],sep=" ")
+  }
+  
+  d <- alldata[[1]]
+  for(i in 2:length(filenames)){
+    d <- rbind(d,alldata[[i]])
+  }
+  
+  d$subsetlabel <- factor(d$subsetlabel,levels=unique(d$subsetlabel))
+  
+  p <- ggplot(d ,aes(y=pe,x=var)) +
+    facet_grid(.~subsetlabel) +
+    coord_flip(ylim = c(-.3, .3)) +
+    geom_hline(yintercept = 0,size=.5,colour="darkgrey",linetype="solid") +
+    geom_pointrange(aes(ymin=lower,ymax=upper,width=.4),position="dodge",size=.6) +
+    scale_y_continuous(name=yylab,breaks=seq(-.2,.2,.1)) +
+    scale_x_discrete(name="") +
+    theme_bw1()
+  print(p)
+  dev.off()
+  
+  pdf(file.path(dir_plots, paste0("1",dl[[kk]]$subfilename,".pdf")), width=14, height=10)
+  print(p)
+  dev.off()
+  
+  write.csv(
+    d[,c("pe","se","var","upper","lower","group","subset","subsetlabel")],
+    file=file.path(dir_csv, paste0("1",dl[[kk]]$subfilename,".csv")),
+    row.names = FALSE
+  )
 }
 
-d <- alldata[[1]]
-for(i in 2:length(filenames)){
-d <- rbind(d,alldata[[i]])
-}
-
-d$subsetlabel <- factor(d$subsetlabel,levels=unique(d$subsetlabel))
-
-p = ggplot(d ,aes(y=pe,x=var))#,colour=group))
-p = p + facet_grid(.~subsetlabel)
-p = p + coord_flip(ylim = c(-.3, .3))
-p = p + geom_hline(yintercept = 0,size=.5,colour="darkgrey",linetype="solid") 
-p = p +geom_pointrange(aes(ymin=lower,ymax=upper,width=.4),position="dodge",size=.6)
-p = p + scale_y_continuous(name=yylab,breaks=seq(-.2,.2,.1)) 
-p = p + scale_x_discrete(name="")
-p = p + theme_bw1()
-print(p)
-
-dev.off()
-pdf(paste("1",dl[[kk]]$subfilename,".pdf",sep=""),width=14,height=10)
-print(p)
-dev.off()
-
-write.csv(d[,c("pe","se","var","upper","lower","group","subset","subsetlabel")],
-          file=paste("1",dl[[kk]]$subfilename,".csv",sep=""))
-
-}
-
-# additional robustness checks
+## ------------------------------------------------------------------
+## Additional robustness checks: FE and RE
+## ------------------------------------------------------------------
 
 ## Respondent Fixed Effects 
 ffilename <- "resfixedeffects"
-d <- read.table(paste(ffilename,".txt",sep=""))
+d <- read.table(file.path(dir_txt, paste0(ffilename,".txt")))
+rownames(d) <- d[[1]]
+d <- d[ , -1, drop = FALSE]
 d <- prepdata(d)
 
-yylab <- c("Effect on Pr(Immigrant Preferred for Admission)")
+yylab <- "Effect on Pr(Immigrant Preferred for Admission)"
 
-p = ggplot(d,aes(y=pe,x=var))#,colour=group))
-p = p + coord_flip(ylim = c(-.3, .3))  
-p = p + geom_hline(yintercept = 0,size=.5,colour="darkgrey",linetype="solid") 
-p = p +geom_pointrange(aes(ymin=lower,ymax=upper,width=.4),position="dodge",size=.6)
-p = p + scale_y_continuous(name=yylab,breaks=round(seq(-.4,.4,.2),1),labels=c("-.4","-.2","0",".2",".4"))
-p = p + scale_x_discrete(name="")
+p <- ggplot(d,aes(y=pe,x=var)) +
+  coord_flip(ylim = c(-.3, .3)) +
+  geom_hline(yintercept = 0,size=.5,colour="darkgrey",linetype="solid") +
+  geom_pointrange(aes(ymin=lower,ymax=upper,width=.4),position="dodge",size=.6) +
+  scale_y_continuous(name=yylab,
+                     breaks=round(seq(-.4,.4,.2),1),
+                     labels=c("-.4","-.2","0",".2",".4")) +
+  scale_x_discrete(name="")
 print(p)
 dev.off()
 
-pdf(paste("1",ffilename,".pdf",sep=""),width=10,height=12.5)
-p = p  + theme_bw1()
-print(p)
+pdf(file.path(dir_plots, paste0("1",ffilename,".pdf")), width=10, height=12.5)
+p2 <- p + theme_bw1()
+print(p2)
 dev.off()
+
 write.csv(d[,c("pe","se","var","upper","lower","group")],
-          file=paste("1",ffilename,".csv",sep=""))
+          file=file.path(dir_csv, paste0("1",ffilename,".csv")),
+          row.names = FALSE)
 
 ## Respondent Random Effects 
 ffilename <- "resrandomeffects"
-d <- read.table(paste(ffilename,".txt",sep=""))
+d <- read.table(file.path(dir_txt, paste0(ffilename,".txt")))
+rownames(d) <- d[[1]]
+d <- d[ , -1, drop = FALSE]
 d <- prepdata(d)
 
-yylab <- c("Effect on Pr(Immigrant Preferred for Admission)")
+yylab <- "Effect on Pr(Immigrant Preferred for Admission)"
 
-p = ggplot(d,aes(y=pe,x=var))#,colour=group))
-p = p + coord_flip(ylim = c(-.3, .3))  
-p = p + geom_hline(yintercept = 0,size=.5,colour="darkgrey",linetype="solid") 
-p = p +geom_pointrange(aes(ymin=lower,ymax=upper,width=.4),position="dodge",size=.6)
-p = p + scale_y_continuous(name=yylab,breaks=round(seq(-.4,.4,.2),1),labels=c("-.4","-.2","0",".2",".4"))
-p = p + scale_x_discrete(name="")
+p <- ggplot(d,aes(y=pe,x=var)) +
+  coord_flip(ylim = c(-.3, .3)) +
+  geom_hline(yintercept = 0,size=.5,colour="darkgrey",linetype="solid") +
+  geom_pointrange(aes(ymin=lower,ymax=upper,width=.4),position="dodge",size=.6) +
+  scale_y_continuous(name=yylab,
+                     breaks=round(seq(-.4,.4,.2),1),
+                     labels=c("-.4","-.2","0",".2",".4")) +
+  scale_x_discrete(name="")
 print(p)
 dev.off()
 
-pdf(paste("1",ffilename,".pdf",sep=""),width=10,height=12.5)
-p = p  + theme_bw1()
-print(p)
+pdf(file.path(dir_plots, paste0("1",ffilename,".pdf")), width=10, height=12.5)
+p2 <- p + theme_bw1()
+print(p2)
 dev.off()
+
 write.csv(d[,c("pe","se","var","upper","lower","group")],
-          file=paste("1",ffilename,".csv",sep=""))
+          file=file.path(dir_csv, paste0("1",ffilename,".csv")),
+          row.names = FALSE)
 
+## ------------------------------------------------------------------
+## Figure 3: Profile predictions (chosenPRs)
+## ------------------------------------------------------------------
 
-## Figure 3: Estimated Probability of Being Chosen for Admission for Selected Immigrant Profiles
-rm(list=ls())
-library(foreign)
-
-# function to get labels
 getlabels <- function(vector){
   
   label <- c("")
@@ -473,19 +535,25 @@ getlabels <- function(vector){
   return(label) 
 }
 
-d <- read.table("chosenPRs.txt")
-d$ub <- d$pe+1.645*d$se
-d$lb <- d$pe-1.645*d$se
+# R estimates script writes chosenPRs.txt with a header row
+d <- read.table(file.path(dir_txt, "chosenPRs.txt"), header = TRUE)
+
+# convert character/factor columns to numeric
+char_cols <- sapply(d, is.character) | sapply(d, is.factor)
+d[char_cols] <- lapply(d[char_cols], function(x) as.numeric(as.character(x)))
+
+d$ub <- d$pe + 1.645 * d$se
+d$lb <- d$pe - 1.645 * d$se
 
 d$index <- seq(1,10,2)
 
 d$labels <- NA
 for(i in 1:nrow(d)){
-  d$labels[i] <- getlabels(d[i,colnames(d)[3:11]])
+  d$labels[i] <- getlabels(d[i, colnames(d)[3:11]])
 }
 howmanylabels <- length(colnames(d)[3:11])
 
-pdf("1prbyprofile.pdf",width=12,height=8)
+pdf(file.path(dir_plots, "1prbyprofile.pdf"), width=12, height=8)
 plot(x=d$pe,y=d$index,
      ylim=c(0.3,max(d$index)+.6),
      xlim=c(-.45,1.15),
@@ -502,16 +570,10 @@ arrows(x0=d$lb, y0=d$index, x1=d$ub,y1=d$index,angle=90,code=3,length=.2)
 abline(v=.5,lty=3)
 
 for(i in 1:nrow(d)){
-  text(x=rep(-.25,howmanylabels),y=d$index[i]+seq(.8,-.8,length.out=howmanylabels)
-       ,labels=strsplit(d$labels[i],"; ")[[1]]
-       ,cex=.9)
+  text(x=rep(-.25,howmanylabels),y=d$index[i]+seq(.8,-.8,length.out=howmanylabels),
+       labels=strsplit(d$labels[i],"; ")[[1]],
+       cex=.9)
 }
 
 text(y=d$index,x=1.07,labels=paste("percentile: ",c(1,25,50,75,99),sep=""),cex=.9)
 dev.off()
-
-
-
-
-
-
