@@ -35,6 +35,30 @@ FEAT_RENAME = {
     'Feat_Language':'FeatLang'
 }
 
+def adjust_label_names(df: pd.DataFrame):
+    # Some features have slightly different names than in the original categories
+    df = df.copy()
+    # FeatEd - remove . from U.S. / Equivalent to completing two years at college in the US -- Equivalent to completing two years of college in the US
+    df['FeatEd'] = df['FeatEd'].str.replace('U.S.', 'US').replace('Equivalent to completing two years at college in the US', 'Equivalent to completing two years of college in the US')
+    # FeatGender - lowercase
+    df['FeatGender'] = df['FeatGender'].str.lower()
+    # FeatReason - Reunite with family members already in U.S. -> Reunite with family members already in the U.S.
+    df['FeatReason'] = df['FeatReason'].str.replace("Reunite with family members already in U.S.", "Reunite with family members already in the U.S.")
+    # FeatExp
+    df['FeatExp'] = (
+        df['FeatExp'].str.replace('More than five years', 'More than five years of job training and experience')
+        .replace('Three to five years', 'Three to five years of job training and experience')
+        .replace('One to two years', 'One or two years of job training and experience')
+    )
+    # FeatPlans
+    df['FeatPlans'] = df['FeatPlans'].str.replace('Does not have a contract with a U.S. employer, but has done job interviews', 'Does not have a contract with a U.S. employer but has done job interviews')
+    # FeatTrips
+    df['FeatTrips'] = df['FeatTrips'].str.replace('Entered the U.S. once before on a tourist visa', 'Entered U.S. once before on a tourist visa').replace('Spent six months with family members in the U.S.', 'Spent six months with family members in the U.S')
+    # FeatLang
+    df['FeatLang'] = df['FeatLang'].str.replace('During admission interview, this applicant spoke fluent English', 'During the admission interview, this applicant spoke fluent English')
+    return df
+
+
 def apply_original_categorical_scheme(df: pd.DataFrame) -> pd.DataFrame:
     """Apply original category schema to the data frame.
 
@@ -149,9 +173,10 @@ if __name__ == "__main__":
     full['Support_Admission'] = full['Rating_Immigrant'].apply(lambda x: 1 if x > 4 else 0)
     full = full[COLUMNS]
     full = full.astype({'contest_no': np.int8})
+    full = adjust_label_names(full)
     full = apply_original_categorical_scheme(full)
     variable_labels, _ = get_stata_labels()
-
+    
     full.to_stata(fp_experiment.replace('json', 'dta'), variable_labels=variable_labels)
     
                 
