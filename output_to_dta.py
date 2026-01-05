@@ -35,7 +35,34 @@ FEAT_RENAME = {
     'Feat_Language':'FeatLang'
 }
 
-def adjust_label_names(df: pd.DataFrame):
+V_LABEL_RENAME = {
+    'ZIP': 'censusgroup',
+    'co1': 'FeatCountry',
+    'job1': 'FeatJob',
+    'W2_Q15': 'Rating_Immigrant',
+    'V129_A': 'FeatLang',
+    'V127_A': 'FeatPlans',
+    'V126_A': 'FeatExp',
+    'V124_A': 'FeatReason',
+    'V121_A': 'FeatEd',
+    'W1_Q1': 'W1_Q1',
+    'W1_Q2': 'W1_Q2',
+    'W1_Q3': 'W1_Q3',
+    'W1_Q4': 'W1_Q4',
+    'W2_Q16': 'W2_Q16',
+    'PARTY_ID': 'Party_ID',
+    'IDEOLOGY': 'Ideology',
+    'PPAGE': 'ppage',
+    'PPEDUCAT': 'ppeducat',
+    'PPETHM': 'ppethm',
+    'PPGENDER': 'ppgender',
+    'PPINCIMP': 'ppincimp',
+    'PPSTATEN': 'ppstaten',
+    'gender': 'FeatGender',
+    'prior': 'FeatTrips'
+}
+
+def adjust_label_names(df: pd.DataFrame) -> pd.DataFrame:
     # Some features have slightly different names than in the original categories
     df = df.copy()
     # FeatEd - remove . from U.S. / Equivalent to completing two years at college in the US -- Equivalent to completing two years of college in the US
@@ -95,12 +122,24 @@ def get_stata_labels() -> tuple[dict, dict]:
     Returns:
         tuple[dict, dict]: variable and value label dicts
     """
+    variable_labels, value_labels = {}, {}
     with pd.io.stata.StataReader('material/repdata.dta') as reader:
-        return reader.variable_labels(), reader.value_labels()
+        variable_labels, value_labels = reader.variable_labels(), reader.value_labels()
+    # up value label indices by 1 and turn into string
+    return variable_labels, value_labels
+
+def transform_value_labels(value_labels: dict) -> dict:
+    return {V_LABEL_RENAME[key]: value for key, value in value_labels.items()}
 
 def translate_profile_columns():
     experiment_template = pd.read_excel('experiments/publication/experiment_prompt_template.xlsx', sheet_name='profile')
     return {value: key for key, value in experiment_template.iloc[0].to_dict().items()}
+
+def transform_value_columns_to_numerics(df: pd.DataFrame, value_labels: dict) -> pd.DataFrame:
+    for key, values in value_labels.items():
+        # Replace throws a warning for using replace to recast a variable
+        df[key] = df[key].replace({v: k for k, v in values.items()}).astype(float)
+    return df
 
 if __name__ == "__main__":
     profile_column_dict = translate_profile_columns()
@@ -158,8 +197,6 @@ if __name__ == "__main__":
                 rating_data['immigrant_id'].append(immigrant_id)
                 rating_data['Rating_Immigrant'].append(rating)
 
-
-
     # Rename Treatment cols
     treatment_data = pd.DataFrame(treatment_data).rename(columns=FEAT_RENAME)
     # Load profile data from stata
@@ -175,8 +212,14 @@ if __name__ == "__main__":
     full = full.astype({'contest_no': np.int8})
     full = adjust_label_names(full)
     full = apply_original_categorical_scheme(full)
-    variable_labels, _ = get_stata_labels()
-    
-    full.to_stata(fp_experiment.replace('json', 'dta'), variable_labels=variable_labels)
+    variable_labels, value_labels = get_stata_labels()
+    # The original labels have keys differing from
+    # the column names. Hence, we need to transform them first
+    value_labels = transform_value_labels(value_labels)
+    # As we can not apply the proper value_labels to categorical columns
+    # we have to transform them into their raw numerical representation
+    # first. After that we can write the data to a Stata file.
+    full = transform_value_columns_to_numerics(full, value_labels)
+    full.to_stata(fp_experiment.replace('json', 'dta'), variable_labels=variable_labels, value_labels=value_labels, write_index=False)
     
                 
