@@ -21,7 +21,6 @@ if (!dir.exists(txt_dir)) dir.create(txt_dir)
 ############################################################
 
 data <- read_dta(
-  # "C:/Users/ChristianOswald/Documents/GitLab/synthetic-replication-games/material/repdata.dta"
   "repdata.dta"
 )
 
@@ -785,9 +784,9 @@ data$subset <- NULL
 
 data <- data %>%
   mutate(
-    W1_Q1r = dplyr::recode(W1_Q1, `5` = 1L, `4` = 2L, `2` = 4L, `1` = 5L, .default = W1_Q1),
-    W1_Q2r = dplyr::recode(W1_Q2, `5` = 1L, `4` = 2L, `2` = 4L, `1` = 5L, .default = W1_Q2),
-    W1_Q3r = dplyr::recode(W1_Q3, `5` = 1L, `4` = 2L, `2` = 4L, `1` = 5L, .default = W1_Q3),
+    W1_Q1r = dplyr::recode(as.numeric(W1_Q1), `5` = 1L, `4` = 2L, `2` = 4L, `1` = 5L, .default = as.integer(W1_Q1)),
+    W1_Q2r = dplyr::recode(as.numeric(W1_Q2), `5` = 1L, `4` = 2L, `2` = 4L, `1` = 5L, .default = as.integer(W1_Q2)),
+    W1_Q3r = dplyr::recode(as.numeric(W1_Q3), `5` = 1L, `4` = 2L, `2` = 4L, `1` = 5L, .default = as.integer(W1_Q3)),
     SM_index = (as.numeric(W1_Q1r) + as.numeric(W1_Q2r) + as.numeric(W1_Q3r))/3
   )
 
@@ -808,14 +807,51 @@ data$subset <- NULL
 ## 15. Figure C.7: by number of countertypical profiles
 ############################################################
 
-data <- data %>%
-  mutate(countertypical = 0L)
-
 # Implement the same countertypical rules as Stata:
-# (for brevity, you can paste the exact logical conditions from your do-file; omitted here)
-
-# Example pattern:
-# data$countertypical[...] <- 1L  # condition for each rule
+data <- data %>%
+  mutate(
+    countertypical = if_else(!is.na(FeatCountry), 0L, NA_integer_),
+    countertypical = if_else(
+      # Mexico + {some college or college degree or graduate degree}
+      (FeatCountry == 3 & !is.na(FeatEd) & FeatEd >= 5) |
+      # Mexico + {doctor or research scientist or computer programmer or financial analyst}
+      (FeatCountry == 3 & FeatJob %in% c(11, 10, 8, 5)) |
+      # Somalia + {some college or college degree or graduate degree}
+      (FeatCountry == 9 & !is.na(FeatEd) & FeatEd >= 5) |
+      # Somalia + {doctor or research scientist or computer programmer or financial analyst}
+      (FeatCountry == 9 & FeatJob %in% c(11, 10, 8, 5)) |
+      # Sudan + {research scientist or computer programmer or financial analyst}
+      (FeatCountry == 9 & FeatJob %in% c(10, 8, 5)) |
+      # Iraq + {research scientist or computer programmer or financial analyst}
+      (FeatCountry == 10 & FeatJob %in% c(10, 8, 5)) |
+      # German + {no formal education or 4th grade education or 8th grade education}
+      (FeatCountry == 1 & !is.na(FeatEd) & FeatEd <= 3) |
+      # German + {janitor or waiter or child care provider or gardener}
+      (FeatCountry == 1 & FeatJob %in% c(1, 3, 4)) |
+      # French + {no formal education or 4th grade education or 8th grade education}
+      (FeatCountry == 2 & !is.na(FeatEd) & FeatEd <= 3) |
+      # French + {janitor or waiter or child care provider or gardener}
+      (FeatCountry == 2 & FeatJob %in% c(1, 3, 4)) |
+      # Indian + {no formal education or 4th grade education or 8th grade education}
+      (FeatCountry == 6 & !is.na(FeatEd) & FeatEd <= 3) |
+      # Indian + {janitor or waiter or child care provider or gardener}
+      (FeatCountry == 6 & FeatJob %in% c(1, 3, 4)) |
+      # Indian + {tried English but unable or used interpreter}
+      (FeatCountry == 6 & FeatLang == 3) |
+      # German + unauthorized
+      (FeatCountry == 1 & FeatTrips == 5) |
+      # French + unauthorized
+      (FeatCountry == 2 & FeatTrips == 5) |
+      # Female + construction worker
+      (FeatCountry == 1 & FeatJob == 6) |
+      # Male + child care provider
+      (FeatCountry == 2 & FeatJob == 3) |
+      # Seek better job + No plans to look for work
+      (FeatReason == 2 & FeatPlans == 4),
+      1L,
+      countertypical
+    )
+  )
 
 # Then aggregate by CaseID
 data <- data %>%
