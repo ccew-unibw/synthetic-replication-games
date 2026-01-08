@@ -12,7 +12,7 @@ wheels/
 # Other
 /experiment_results/
 /material/archive/
-/material/txt/
-/material/csv/
-/material/plots/
+/material/txt*/
+/material/csv*/
+/material/plots*/
 .Rproj.user
