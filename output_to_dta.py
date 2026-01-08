@@ -83,6 +83,8 @@ def adjust_label_names(df: pd.DataFrame) -> pd.DataFrame:
     df['FeatTrips'] = df['FeatTrips'].str.replace('Entered the U.S. once before on a tourist visa', 'Entered U.S. once before on a tourist visa').replace('Spent six months with family members in the U.S.', 'Spent six months with family members in the U.S')
     # FeatLang
     df['FeatLang'] = df['FeatLang'].str.replace('During admission interview, this applicant spoke fluent English', 'During the admission interview, this applicant spoke fluent English').replace('During admission interview, this applicant spoke through an interpreter', 'During admission interview, this applicant spoke [language] and used an interpreter')
+    # RatingImmigrant - the original labels are strings....
+    df['Rating_Immigrant'] = df['Rating_Immigrant'].astype(str).str.replace('1', '1 - Absolutely Not Admit').replace('7', '7 - Definitely Admit')
     return df
 
 
