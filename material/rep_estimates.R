@@ -19,21 +19,26 @@ parser <- add_option(parser, c("-i", "--input"), action = "store",
                      type = "character", default = "repdata.dta",
                      help = "Input dta file to be processed. Defaults to `repdata.dta`.")
 parser <- add_option(parser, c("-o", "--output"), action = "store",
-                     type = "character", default = "txt_orig",
-                     help = "Output directory. Defaults to `txt_orig`.")
+                     type = "character", default = "orig",
+                     help = "Output directory suffix. Defaults to `orig`.")
 
 if (interactive()) {
   # If running this script interactively, set the required arguments here
-  arg <- parse_args(parser, args = c("--input=repdata.dta", "--output=txt_orig"))
+  arg <- parse_args(parser, args = c("--input=repdata.dta", "--output=orig"))
 } else {
   arg <- parse_args(parser)
+}
+
+if (arg$input != "repdata.dta" && arg$output == "orig") {
+  stop("If `input` is set to a dta other than the original study's file,
+        `output` must be set to a value other than 'orig'!")
 }
 
 ############################################################
 ## 0a. Output directory for txt files
 ############################################################
 
-txt_dir <- arg$output
+txt_dir <- paste("txt", arg$output, sep = "_")
 if (!dir.exists(txt_dir)) dir.create(txt_dir)
 
 ############################################################
