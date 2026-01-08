@@ -1,8 +1,8 @@
-# replication code for plots 
-# (run R estimates script first so txt/ is populated)
-
+# Comparison plots script; basically a modified copy of `rep_plots.r` as
+# I didn't want to modify the original plot script more than necessary
 rm(list = ls())
 library(ggplot2)
+library(dplyr)
 library(optparse)
 
 ############################################################
@@ -10,31 +10,44 @@ library(optparse)
 ############################################################
 
 parser <- OptionParser()
-parser <- add_option(parser, c("-s", "--suffix"), action = "store",
+parser <- add_option(parser, c("-o", "--original"), action = "store",
                      type = "character", default = "orig",
-                     help = "Input and outpit directory suffix. Defaults to `orig`.")
+                     help = "Original directory suffix. Defaults to `orig`.")
+parser <- add_option(parser, c("-e", "--experiment"), action = "store",
+                     type = "character", default = "exp",
+                     help = "Experiment directory suffix. Defaults to `exp`.")
 
 if (interactive()) {
   # If running this script interactively, set the required arguments here
-  arg <- parse_args(parser, args = c("--suffix=orig"))
+  arg <- parse_args(parser, args = c("--original=orig", "--experiment=exp"))
 } else {
   arg <- parse_args(parser)
+}
+
+# Sanity checks
+if (arg$original == arg$experiment) {
+  stop("Input directories for the comparison are identical. Please
+        set `--original` and `--experiment` to two distinct directories.")
 }
 
 ## ------------------------------------------------------------------
 ## Directories
 ## ------------------------------------------------------------------
 
-dir_txt   <- paste("txt", arg$suffix, sep = "_")
-dir_csv   <- paste("csv", arg$suffix, sep = "_")
-dir_plots <- paste("plots", arg$suffix, sep = "_")
+dir_txt_orig   <- paste("txt", arg$original, sep = "_")
+dir_txt_exp    <- paste("txt", arg$experiment, sep = "_")
+dir_csv   <- paste("csv", "cmp", sep = "_")
+dir_plots <- paste("plots", "cmp", sep = "_")
 
-# Sanity check
-if (!dir.exists(dir_txt)) {
-  stop("The input directory does not exist. Run `rep_estimates.R` first!")
+if (!dir.exists(dir_txt_orig) || !dir.exists(dir_txt_exp)) {
+  stop("At least one of the input directories is empty. Run `rep_estimates.R` first!")
 }
 
-if (!dir.exists(dir_txt))   dir.create(dir_txt)
+## Version path vector
+fps <- c(dir_txt_orig, dir_txt_exp)
+## Label vector
+labels <- c("Original Study", "LLM Experiment")
+
 if (!dir.exists(dir_csv))   dir.create(dir_csv)
 if (!dir.exists(dir_plots)) dir.create(dir_plots)
 
@@ -167,8 +180,26 @@ theme_bw1 <- function(base_size = 10.1, base_family = "") {
       axis.text.y  = element_text(size = base_size, colour = "black", hjust = 0  , vjust = .5),
       axis.ticks   = element_line(colour = "grey50"),
       axis.title.y = element_text(size = base_size, angle = 90, vjust = .01, hjust = .1),
-      legend.position = "none"
+      # legend.position = "none"
     )
+}
+
+##
+## Concat original and 
+##
+
+create_comparison_dataframe <- function(ffilename) {
+  ds <- list()
+  for (i in seq_along(fps)) {
+    d <- read.table(file.path(fps[i], paste0(ffilename,".txt")))
+    rownames(d) <- d[[1]]
+    d <- d[ , -1, drop = FALSE]
+    d <- prepdata(d) %>%
+      mutate(spec = labels[i])
+    ds[[i]] <- d
+  }
+  d <- bind_rows(ds)
+  return(d)
 }
 
 ## ------------------------------------------------------------------
@@ -176,20 +207,19 @@ theme_bw1 <- function(base_size = 10.1, base_family = "") {
 ## ------------------------------------------------------------------
 
 ffilename <- "chosen"
-d <- read.table(file.path(dir_txt, paste0(ffilename,".txt")))
-rownames(d) <- d[[1]]
-d <- d[ , -1, drop = FALSE]
-d <- prepdata(d)
+d <- create_comparison_dataframe(ffilename)
 
 yylab  <- "Effect on Pr(Immigrant Preferred for Admission)"
 
-p <- ggplot(d,aes(y=pe,x=var)) +
+p <- ggplot(d,aes(y=pe, x=var, colour = spec)) +
   coord_flip(ylim = c(-.3, .3)) +
   geom_hline(yintercept = 0,size=.5,colour="darkgrey",linetype="solid") +
-  geom_pointrange(aes(ymin=lower,ymax=upper,width=.4),position="dodge",size=.6) +
+  geom_pointrange(aes(ymin=lower,ymax=upper,width=.4),position = position_dodge(width = 1),size=.4) +
   scale_y_continuous(name=yylab,
                      breaks=round(seq(-.4,.4,.2),1),
                      labels=c("-.4","-.2","0",".2",".4")) +
+  scale_colour_discrete(guide = guide_legend(reverse = TRUE)) +
+  labs(colour = "Specification") +
   scale_x_discrete(name="")
 print(p)
 dev.off()
@@ -208,20 +238,19 @@ write.csv(d[,c("pe","se","var","upper","lower","group")],
 ## ------------------------------------------------------------------
 
 ffilename <- "support"
-d <- read.table(file.path(dir_txt, paste0(ffilename,".txt")))
-rownames(d) <- d[[1]]
-d <- d[ , -1, drop = FALSE]
-d <- prepdata(d)
+d <- create_comparison_dataframe(ffilename)
 
 yylab <- "Change in Pr(Immigrant Supported for Admission to U.S.)"
 
-p <- ggplot(d,aes(y=pe,x=var)) +
+p <- ggplot(d,aes(y=pe,x=var, colour = spec)) +
   coord_flip(ylim = c(-.3, .3)) +
   geom_hline(yintercept = 0,size=.5,colour="darkgrey",linetype="solid") +
-  geom_pointrange(aes(ymin=lower,ymax=upper,width=.4),position="dodge",size=.6) +
+  geom_pointrange(aes(ymin=lower,ymax=upper,width=.4),position = position_dodge(width = 1),size=.4) +
   scale_y_continuous(name=yylab,
                      breaks=round(seq(-.4,.4,.2),1),
                      labels=c("-.4","-.2","0",".2",".4")) +
+  scale_colour_discrete(guide = guide_legend(reverse = TRUE)) +
+  labs(colour = "Specification") +
   scale_x_discrete(name="")
 print(p)
 dev.off()
@@ -344,36 +373,42 @@ dl[[17]] <- list(subfilename="hispanicornot",
 # do the plots for subsets
 for(kk in 1:length(dl)){
   
-  filenames <- file.path(
-    dir_txt,
-    paste0(dl[[kk]]$subfilename, dl[[kk]]$slevels, ".txt")
-  )
-  
-  alldata <- list()
-  for(i in 1:length(filenames)){
-    d_raw <- read.table(filenames[i])
-    rownames(d_raw) <- d_raw[[1]]
-    d_raw <- d_raw[ , -1, drop = FALSE]
-    alldata[[i]] <- prepdata(d_raw)
-    alldata[[i]]$subset      <- dl[[kk]]$slevels[i]
-    alldata[[i]]$subsetlabel <- paste(dl[[kk]]$subsetnlabel,
-                                      dl[[kk]]$slabels[i],sep=" ")
+  ds <- list()
+  for (j in seq_along(fps)) {
+    filenames <- file.path(
+        fps[j],
+        paste0(dl[[kk]]$subfilename, dl[[kk]]$slevels, ".txt")
+    )
+    alldata <- list()
+    for(i in 1:length(filenames)){
+        d_raw <- read.table(filenames[i])
+        rownames(d_raw) <- d_raw[[1]]
+        d_raw <- d_raw[ , -1, drop = FALSE]
+        alldata[[i]] <- prepdata(d_raw)
+        alldata[[i]]$subset      <- dl[[kk]]$slevels[i]
+        alldata[[i]]$subsetlabel <- paste(dl[[kk]]$subsetnlabel,
+                                        dl[[kk]]$slabels[i],sep=" ")
+    }
+    
+    d <- alldata[[1]]
+    for(i in 2:length(filenames)){
+        d <- rbind(d,alldata[[i]])
+    }
+    d$subsetlabel <- factor(d$subsetlabel,levels=unique(d$subsetlabel))
+    d <- d %>% mutate(spec = labels[j])
+    ds[[j]] <- d
   }
+  d <- bind_rows(ds)
   
-  d <- alldata[[1]]
-  for(i in 2:length(filenames)){
-    d <- rbind(d,alldata[[i]])
-  }
-  
-  d$subsetlabel <- factor(d$subsetlabel,levels=unique(d$subsetlabel))
-  
-  p <- ggplot(d ,aes(y=pe,x=var)) +
+  p <- ggplot(d ,aes(y=pe,x=var,colour=spec)) +
     facet_grid(.~subsetlabel) +
     coord_flip(ylim = c(-.3, .3)) +
     geom_hline(yintercept = 0,size=.5,colour="darkgrey",linetype="solid") +
-    geom_pointrange(aes(ymin=lower,ymax=upper,width=.4),position="dodge",size=.6) +
+    geom_pointrange(aes(ymin=lower,ymax=upper,width=.4),position = position_dodge(width = 1),size=.4) +
     scale_y_continuous(name=yylab,breaks=seq(-.2,.2,.1)) +
     scale_x_discrete(name="") +
+    scale_colour_discrete(guide = guide_legend(reverse = TRUE)) +
+    labs(colour = "Specification") +
     theme_bw1()
   print(p)
   dev.off()
@@ -389,27 +424,27 @@ for(kk in 1:length(dl)){
   )
 }
 
+
 ## ------------------------------------------------------------------
 ## Additional robustness checks: FE and RE
 ## ------------------------------------------------------------------
 
 ## Respondent Fixed Effects 
 ffilename <- "resfixedeffects"
-d <- read.table(file.path(dir_txt, paste0(ffilename,".txt")))
-rownames(d) <- d[[1]]
-d <- d[ , -1, drop = FALSE]
-d <- prepdata(d)
+d <- create_comparison_dataframe(ffilename)
 
 yylab <- "Effect on Pr(Immigrant Preferred for Admission)"
 
-p <- ggplot(d,aes(y=pe,x=var)) +
+p <- ggplot(d,aes(y=pe,x=var, colour = spec)) +
   coord_flip(ylim = c(-.3, .3)) +
   geom_hline(yintercept = 0,size=.5,colour="darkgrey",linetype="solid") +
-  geom_pointrange(aes(ymin=lower,ymax=upper,width=.4),position="dodge",size=.6) +
+  geom_pointrange(aes(ymin=lower,ymax=upper,width=.4),position = position_dodge(width = 1),size=.4) +
   scale_y_continuous(name=yylab,
                      breaks=round(seq(-.4,.4,.2),1),
                      labels=c("-.4","-.2","0",".2",".4")) +
-  scale_x_discrete(name="")
+  scale_x_discrete(name="") +
+  scale_colour_discrete(guide = guide_legend(reverse = TRUE)) +
+  labs(colour = "Specification")
 print(p)
 dev.off()
 
@@ -424,21 +459,20 @@ write.csv(d[,c("pe","se","var","upper","lower","group")],
 
 ## Respondent Random Effects 
 ffilename <- "resrandomeffects"
-d <- read.table(file.path(dir_txt, paste0(ffilename,".txt")))
-rownames(d) <- d[[1]]
-d <- d[ , -1, drop = FALSE]
-d <- prepdata(d)
+d <- create_comparison_dataframe(ffilename)
 
 yylab <- "Effect on Pr(Immigrant Preferred for Admission)"
 
-p <- ggplot(d,aes(y=pe,x=var)) +
+p <- ggplot(d,aes(y=pe,x=var, colour = spec)) +
   coord_flip(ylim = c(-.3, .3)) +
   geom_hline(yintercept = 0,size=.5,colour="darkgrey",linetype="solid") +
-  geom_pointrange(aes(ymin=lower,ymax=upper,width=.4),position="dodge",size=.6) +
+  geom_pointrange(aes(ymin=lower,ymax=upper,width=.4),position = position_dodge(width = 1),size=.4) +
   scale_y_continuous(name=yylab,
                      breaks=round(seq(-.4,.4,.2),1),
                      labels=c("-.4","-.2","0",".2",".4")) +
-  scale_x_discrete(name="")
+  scale_x_discrete(name="") +
+  scale_colour_discrete(guide = guide_legend(reverse = TRUE)) +
+  labs(colour = "Specification")
 print(p)
 dev.off()
 
@@ -452,150 +486,151 @@ write.csv(d[,c("pe","se","var","upper","lower","group")],
           row.names = FALSE)
 
 ## ------------------------------------------------------------------
-## Figure 3: Profile predictions (chosenPRs)
+## NOT IMPLEMENTED FOR COMPARISON
+## Figure 3: Profile predictions (chosenPRs) 
 ## ------------------------------------------------------------------
 
-getlabels <- function(vector){
+# getlabels <- function(vector){
   
-  label <- c("")
-  for(i in 1:length(vector)){
+#   label <- c("")
+#   for(i in 1:length(vector)){
     
-    if(i==1){ # Gender_Immigrant
-      if(vector[i]==2){lab <- c("Male")}
-      if(vector[i]==1){lab <- c("Female")}
-      lab <- paste("Gender: ",lab,sep="")
-      label = paste(label,lab,sep="")
-    }
+#     if(i==1){ # Gender_Immigrant
+#       if(vector[i]==2){lab <- c("Male")}
+#       if(vector[i]==1){lab <- c("Female")}
+#       lab <- paste("Gender: ",lab,sep="")
+#       label = paste(label,lab,sep="")
+#     }
     
-    if(i==2){ # Ed_Immigrant
-      if(vector[i]==1){lab <- c("no formal")}
-      if(vector[i]==2){lab <- c("4th grade")}
-      if(vector[i]==3){lab <- c("8th grade")}
-      if(vector[i]==4){lab <- c("high school")}
-      if(vector[i]==5){lab <- c("two-year college")}
-      if(vector[i]==6){lab <- c("college degree")}
-      if(vector[i]==7){lab <- c("graduate degree")}
-      lab <- paste("Education: ",lab,sep="")
-      label = paste(label,lab,sep="; ")
-    }
+#     if(i==2){ # Ed_Immigrant
+#       if(vector[i]==1){lab <- c("no formal")}
+#       if(vector[i]==2){lab <- c("4th grade")}
+#       if(vector[i]==3){lab <- c("8th grade")}
+#       if(vector[i]==4){lab <- c("high school")}
+#       if(vector[i]==5){lab <- c("two-year college")}
+#       if(vector[i]==6){lab <- c("college degree")}
+#       if(vector[i]==7){lab <- c("graduate degree")}
+#       lab <- paste("Education: ",lab,sep="")
+#       label = paste(label,lab,sep="; ")
+#     }
     
-    if(i==3){ # Language_Immigrant
-      if(vector[i]==1){lab <- c("fluent English")}
-      if(vector[i]==2){lab <- c("broken English")}
-      if(vector[i]==3){lab <- c("tried English but unable")}
-      if(vector[i]==4){lab <- c("used interpreter")}
-      lab <- paste("Language: ",lab,sep="")
-      label = paste(label,lab,sep="; ")
-    }
+#     if(i==3){ # Language_Immigrant
+#       if(vector[i]==1){lab <- c("fluent English")}
+#       if(vector[i]==2){lab <- c("broken English")}
+#       if(vector[i]==3){lab <- c("tried English but unable")}
+#       if(vector[i]==4){lab <- c("used interpreter")}
+#       lab <- paste("Language: ",lab,sep="")
+#       label = paste(label,lab,sep="; ")
+#     }
     
-    if(i==4){ # Country_Immigrant
-      if(vector[i]==1){lab <- c("Germany")}
-      if(vector[i]==2){lab <- c("France")}
-      if(vector[i]==3){lab <- c("Mexico")}
-      if(vector[i]==4){lab <- c("Philippines")}  
-      if(vector[i]==5){lab <- c("Poland")}
-      if(vector[i]==6){lab <- c("India")}  
-      if(vector[i]==7){lab <- c("China")}
-      if(vector[i]==8){lab <- c("Sudan")}
-      if(vector[i]==9){lab <- c("Somalia")}
-      if(vector[i]==10){lab <- c("Iraq")}
-      lab <- paste("Origin: ",lab,sep="")
-      label = paste(label,lab,sep="; ")
-    }    
+#     if(i==4){ # Country_Immigrant
+#       if(vector[i]==1){lab <- c("Germany")}
+#       if(vector[i]==2){lab <- c("France")}
+#       if(vector[i]==3){lab <- c("Mexico")}
+#       if(vector[i]==4){lab <- c("Philippines")}  
+#       if(vector[i]==5){lab <- c("Poland")}
+#       if(vector[i]==6){lab <- c("India")}  
+#       if(vector[i]==7){lab <- c("China")}
+#       if(vector[i]==8){lab <- c("Sudan")}
+#       if(vector[i]==9){lab <- c("Somalia")}
+#       if(vector[i]==10){lab <- c("Iraq")}
+#       lab <- paste("Origin: ",lab,sep="")
+#       label = paste(label,lab,sep="; ")
+#     }    
     
-    if(i==5){ # Job_Immigrant
-      if(vector[i]==1){lab <- c("janitor")}
-      if(vector[i]==2){lab <- c("waiter")}
-      if(vector[i]==3){lab <- c("child care provider")}
-      if(vector[i]==4){lab <- c("gardener")}      
-      if(vector[i]==5){lab <- c("financial analyst")}      
-      if(vector[i]==6){lab <- c("construction worker")}
-      if(vector[i]==7){lab <- c("teacher")}
-      if(vector[i]==8){lab <- c("computer programmer")}      
-      if(vector[i]==9){lab <- c("nurse")}
-      if(vector[i]==10){lab <- c("research scientist")}
-      if(vector[i]==11){lab <- c("doctor")}
-      lab <- paste("Profession: ",lab,sep="")
-      label = paste(label,lab,sep="; ")
-    }
+#     if(i==5){ # Job_Immigrant
+#       if(vector[i]==1){lab <- c("janitor")}
+#       if(vector[i]==2){lab <- c("waiter")}
+#       if(vector[i]==3){lab <- c("child care provider")}
+#       if(vector[i]==4){lab <- c("gardener")}      
+#       if(vector[i]==5){lab <- c("financial analyst")}      
+#       if(vector[i]==6){lab <- c("construction worker")}
+#       if(vector[i]==7){lab <- c("teacher")}
+#       if(vector[i]==8){lab <- c("computer programmer")}      
+#       if(vector[i]==9){lab <- c("nurse")}
+#       if(vector[i]==10){lab <- c("research scientist")}
+#       if(vector[i]==11){lab <- c("doctor")}
+#       lab <- paste("Profession: ",lab,sep="")
+#       label = paste(label,lab,sep="; ")
+#     }
     
-    if(i==6){ # JobExp_Immigrant
-      if(vector[i]==1){lab <- c("none")}
-      if(vector[i]==2){lab <- c("1-2 years")}
-      if(vector[i]==3){lab <- c("3-5 years")}
-      if(vector[i]==4){lab <- c("5+years")}
-      lab <- paste("Job experience: ",lab,sep="")
-      label = paste(label,lab,sep="; ")
-    }
+#     if(i==6){ # JobExp_Immigrant
+#       if(vector[i]==1){lab <- c("none")}
+#       if(vector[i]==2){lab <- c("1-2 years")}
+#       if(vector[i]==3){lab <- c("3-5 years")}
+#       if(vector[i]==4){lab <- c("5+years")}
+#       lab <- paste("Job experience: ",lab,sep="")
+#       label = paste(label,lab,sep="; ")
+#     }
     
-    if(i==7){ # JobPlans_Immigrant
-      if(vector[i]==1){lab <- c("contract with employer")}
-      if(vector[i]==2){lab <- c("interviews with employer")}
-      if(vector[i]==3){lab <- c("will look for work")}
-      if(vector[i]==4){lab <- c("no plans to look for work")}
-      lab <- paste("Job plans: ",lab,sep="")
-      label = paste(label,lab,sep="; ")
-    }
-    if(i==8){ # Reason_Immigrant
-      if(vector[i]==1){lab <- c("reunite with family")}
-      if(vector[i]==2){lab <- c("seek better job")}
-      if(vector[i]==3){lab <- c("escape persecution")}
-      lab <- paste("Application reason: ",lab,sep="")
-      label = paste(label,lab,sep="; ")
-    }
-    if(i==9){ # PriorTrips_Immigrant
-      if(vector[i]==1){lab <- c("never")}
-      if(vector[i]==2){lab <- c("once as tourist")}
-      if(vector[i]==3){lab <- c("many times as tourist")}
-      if(vector[i]==4){lab <- c("six months with family")}
-      if(vector[i]==5){lab <- c("once w/o authorization")}
-      lab <- paste("Prior trips to U.S.: ",lab,sep="")
-      label = paste(label,lab,sep="; ")
-    }
+#     if(i==7){ # JobPlans_Immigrant
+#       if(vector[i]==1){lab <- c("contract with employer")}
+#       if(vector[i]==2){lab <- c("interviews with employer")}
+#       if(vector[i]==3){lab <- c("will look for work")}
+#       if(vector[i]==4){lab <- c("no plans to look for work")}
+#       lab <- paste("Job plans: ",lab,sep="")
+#       label = paste(label,lab,sep="; ")
+#     }
+#     if(i==8){ # Reason_Immigrant
+#       if(vector[i]==1){lab <- c("reunite with family")}
+#       if(vector[i]==2){lab <- c("seek better job")}
+#       if(vector[i]==3){lab <- c("escape persecution")}
+#       lab <- paste("Application reason: ",lab,sep="")
+#       label = paste(label,lab,sep="; ")
+#     }
+#     if(i==9){ # PriorTrips_Immigrant
+#       if(vector[i]==1){lab <- c("never")}
+#       if(vector[i]==2){lab <- c("once as tourist")}
+#       if(vector[i]==3){lab <- c("many times as tourist")}
+#       if(vector[i]==4){lab <- c("six months with family")}
+#       if(vector[i]==5){lab <- c("once w/o authorization")}
+#       lab <- paste("Prior trips to U.S.: ",lab,sep="")
+#       label = paste(label,lab,sep="; ")
+#     }
     
-  }
-  return(label) 
-}
+#   }
+#   return(label) 
+# }
 
-# R estimates script writes chosenPRs.txt with a header row
-d <- read.table(file.path(dir_txt, "chosenPRs.txt"), header = TRUE)
+# # R estimates script writes chosenPRs.txt with a header row
+# d <- read.table(file.path(dir_txt_orig, "chosenPRs.txt"), header = TRUE)
 
-# convert character/factor columns to numeric
-char_cols <- sapply(d, is.character) | sapply(d, is.factor)
-d[char_cols] <- lapply(d[char_cols], function(x) as.numeric(as.character(x)))
+# # convert character/factor columns to numeric
+# char_cols <- sapply(d, is.character) | sapply(d, is.factor)
+# d[char_cols] <- lapply(d[char_cols], function(x) as.numeric(as.character(x)))
 
-d$ub <- d$pe + 1.645 * d$se
-d$lb <- d$pe - 1.645 * d$se
+# d$ub <- d$pe + 1.645 * d$se
+# d$lb <- d$pe - 1.645 * d$se
 
-d$index <- seq(1,10,2)
+# d$index <- seq(1,10,2)
 
-d$labels <- NA
-for(i in 1:nrow(d)){
-  d$labels[i] <- getlabels(d[i, colnames(d)[3:11]])
-}
-howmanylabels <- length(colnames(d)[3:11])
+# d$labels <- NA
+# for(i in 1:nrow(d)){
+#   d$labels[i] <- getlabels(d[i, colnames(d)[3:11]])
+# }
+# howmanylabels <- length(colnames(d)[3:11])
 
-pdf(file.path(dir_plots, "1prbyprofile.pdf"), width=12, height=8)
-plot(x=d$pe,y=d$index,
-     ylim=c(0.3,max(d$index)+.6),
-     xlim=c(-.45,1.15),
-     xlab="                         Pr(Immigrant Preferred for Admission to U.S.)",
-     ylab="",
-     xaxt="n",
-     yaxt="n",
-     pch=19     
-)
-axis(side=2,at=d$index,labels=NA)
-axis(side=1,at=seq(.0,1,.1),labels=seq(0,1,.1))
+# pdf(file.path(dir_plots, "1prbyprofile.pdf"), width=12, height=8)
+# plot(x=d$pe,y=d$index,
+#      ylim=c(0.3,max(d$index)+.6),
+#      xlim=c(-.45,1.15),
+#      xlab="                         Pr(Immigrant Preferred for Admission to U.S.)",
+#      ylab="",
+#      xaxt="n",
+#      yaxt="n",
+#      pch=19     
+# )
+# axis(side=2,at=d$index,labels=NA)
+# axis(side=1,at=seq(.0,1,.1),labels=seq(0,1,.1))
 
-arrows(x0=d$lb, y0=d$index, x1=d$ub,y1=d$index,angle=90,code=3,length=.2) 
-abline(v=.5,lty=3)
+# arrows(x0=d$lb, y0=d$index, x1=d$ub,y1=d$index,angle=90,code=3,length=.2) 
+# abline(v=.5,lty=3)
 
-for(i in 1:nrow(d)){
-  text(x=rep(-.25,howmanylabels),y=d$index[i]+seq(.8,-.8,length.out=howmanylabels),
-       labels=strsplit(d$labels[i],"; ")[[1]],
-       cex=.9)
-}
+# for(i in 1:nrow(d)){
+#   text(x=rep(-.25,howmanylabels),y=d$index[i]+seq(.8,-.8,length.out=howmanylabels),
+#        labels=strsplit(d$labels[i],"; ")[[1]],
+#        cex=.9)
+# }
 
-text(y=d$index,x=1.07,labels=paste("percentile: ",c(1,25,50,75,99),sep=""),cex=.9)
-dev.off()
+# text(y=d$index,x=1.07,labels=paste("percentile: ",c(1,25,50,75,99),sep=""),cex=.9)
+# dev.off()
