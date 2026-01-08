@@ -3,14 +3,35 @@
 
 rm(list = ls())
 library(ggplot2)
+library(dplyr)
+library(optparse)
+
+############################################################
+## Argument parsing
+############################################################
+
+parser <- OptionParser()
+parser <- add_option(parser, c("-i", "--input"), action = "store",
+                     type = "character", default = "txt_orig",
+                     help = "Input directory. Defaults to `txt_orig`.")
+parser <- add_option(parser, c("-o", "--output"), action = "store",
+                     type = "character", default = "orig",
+                     help = "Output directory suffix. Defaults to `orig`.")
+
+if (interactive()) {
+  # If running this script interactively, set the required arguments here
+  arg <- parse_args(parser, args = c("--input=txt_orig", "--output=orig"))
+} else {
+  arg <- parse_args(parser)
+}
 
 ## ------------------------------------------------------------------
 ## Directories
 ## ------------------------------------------------------------------
 
-dir_txt   <- "txt"
-dir_csv   <- "csv"
-dir_plots <- "plots"
+dir_txt   <- arg$input
+dir_csv   <- paste("csv", arg$output, sep = "_")
+dir_plots <- paste("plots", arg$output, sep = "_")
 
 if (!dir.exists(dir_txt))   dir.create(dir_txt)
 if (!dir.exists(dir_csv))   dir.create(dir_csv)

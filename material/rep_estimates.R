@@ -8,12 +8,32 @@ rm(list=ls())
 library(haven)
 library(dplyr)
 library(fixest)
+library(optparse)
+
+############################################################
+## Argument parsing
+############################################################
+
+parser <- OptionParser()
+parser <- add_option(parser, c("-i", "--input"), action = "store",
+                     type = "character", default = "repdata.dta",
+                     help = "Input dta file to be processed. Defaults to `repdata.dta`.")
+parser <- add_option(parser, c("-o", "--output"), action = "store",
+                     type = "character", default = "txt_orig",
+                     help = "Output directory. Defaults to `txt_orig`.")
+
+if (interactive()) {
+  # If running this script interactively, set the required arguments here
+  arg <- parse_args(parser, args = c("--input=repdata.dta", "--output=txt_orig"))
+} else {
+  arg <- parse_args(parser)
+}
 
 ############################################################
 ## 0a. Output directory for txt files
 ############################################################
 
-txt_dir <- "txt"
+txt_dir <- arg$output
 if (!dir.exists(txt_dir)) dir.create(txt_dir)
 
 ############################################################
@@ -21,7 +41,7 @@ if (!dir.exists(txt_dir)) dir.create(txt_dir)
 ############################################################
 
 data <- read_dta(
-  "repdata.dta"
+  arg$input
 )
 
 # Match Stata factor baselines ib6.FeatCountry, ib3.FeatPlans
