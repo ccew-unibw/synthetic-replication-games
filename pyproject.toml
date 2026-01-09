@@ -8,8 +8,11 @@ dependencies = [
     "talkingtomachines>=0.2.7",
 ]
 
-[[tool.uv.index]]
-url = "https://test.pypi.org/simple/"
+[tool.uv.sources]
+talkingtomachines = { git = "https://github.com/tobiasbohne-unibw/talking-to-machines", branch = "add-local-inference-endpoints" }
 
-[[tool.uv.index]]
-url = "https://pypi.org/simple"
+[dependency-groups]
+dev = [
+    "ipykernel>=7.1.0",
+    "ipython>=9.9.0",
+]
