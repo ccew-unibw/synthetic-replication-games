@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import argparse
+import warnings
 
 from collections import defaultdict
 
@@ -184,14 +185,24 @@ if __name__ == "__main__":
                 continue
             
             if "choice_immigrant_" in response['response_name']:
-                choice = json.loads(response['respondent'])['response']
+                try:
+                    choice = json.loads(response['respondent'])['response']
+                except:
+                    warnings.warn(f"Malformed response: {response['respondent']}")
+                    choice = np.nan
+                    pass
                 choice_data['CaseID'].extend([response['subject_id']]*2)
                 choice_data['contest_no'].extend([response['response_name'].split('_')[-1]]*2)
                 choice_data['immigrant_id'].extend(["a", "b"])
                 choice_data['Chosen_Immigrant'].extend([1, 0] if choice.lower() == "a" else [0, 1])
             
             if "rating_immigrant_" in response['response_name']:
-                rating = int(json.loads(response['respondent'])['response'])
+                try:
+                    rating = int(json.loads(response['respondent'])['response'])
+                except:
+                    warnings.warn(f"Malformed response: {response['respondent']}")
+                    rating = np.nan
+                    pass
                 contest_no = response['response_name'].split('_')[-1]
                 immigrant_id = response['response_name'].split('_')[-2]
                 rating_data['CaseID'].append(response['subject_id'])
