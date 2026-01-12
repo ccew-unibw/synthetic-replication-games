@@ -186,7 +186,8 @@ if __name__ == "__main__":
             
             if "choice_immigrant_" in response['response_name']:
                 try:
-                    choice = json.loads(response['respondent'])['response']
+                    # Llama 3.3 sometimes returns JSON wrapped in ```json ... ```
+                    choice = json.loads(response['respondent'].replace("```json", "").replace("```", ""))['response']
                 except:
                     warnings.warn(f"Malformed response: {response['respondent']}")
                     choice = np.nan
@@ -198,7 +199,8 @@ if __name__ == "__main__":
             
             if "rating_immigrant_" in response['response_name']:
                 try:
-                    rating = int(json.loads(response['respondent'])['response'])
+                    # Llama 3.3 sometimes returns JSON wrapped in ```json ... ```
+                    rating = int(json.loads(response['respondent'].replace("```json", "").replace("```", ""))['response'])
                 except:
                     warnings.warn(f"Malformed response: {response['respondent']}")
                     rating = np.nan
