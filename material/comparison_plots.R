@@ -485,6 +485,10 @@ write.csv(d[,c("pe","se","var","upper","lower","group")],
           file=file.path(dir_csv, paste0("1",ffilename,".csv")),
           row.names = FALSE)
 
+# For some reason, the last plot is always stored as "Rplots.pdf" on disk; this is probably
+# due to the way the pdf files are created here using pdf() and print statements
+file.remove("Rplots.pdf")
+
 ## ------------------------------------------------------------------
 ## NOT IMPLEMENTED FOR COMPARISON
 ## Figure 3: Profile predictions (chosenPRs) 
