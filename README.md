@@ -4,7 +4,6 @@
 
 > Hainmueller, J., & Hopkins, D. J. (2014). The Hidden American Immigration Consensus: A Conjoint Analysis of Attitudes toward Immigrants. American Journal of Political Science, 59(3), 529–548. https://doi.org/10.1111/ajps.12138
 
-
 Find the original publication alongside replication data in `/material`.
 
 ## Requirements
@@ -30,13 +29,16 @@ Find the original publication alongside replication data in `/material`.
 
 ## Running experiments
 
+> [!NOTE]
+> We are currently using a [modified version](https://github.com/tobiasbohne-unibw/talking-to-machines/tree/add-local-inference-endpoints) of the `talkingtomachines` package that allows running experiments on any OpenAI API compatible inference server. This could be a local vLLM or Ollama instance. For compatibility reasons (vLLM doesn't support the _Responses API_), the [_Chat Completion_](https://platform.openai.com/docs/api-reference/chat) endpoints - and not the [_Responses API_](https://platform.openai.com/docs/api-reference/responses) are used whenever a custom endpoint is set in the prompt template.  
+
 1. Launch an experiment using
 
    ```console
    > uv run --env-file .env talkingtomachines experiments/<experiment>/prompt.xlsx
    ```
 
-1. Move results to respective folder
+2. Move results to respective folder
 
    ```console
    > mv experiment_results experiments/<experiment>/
