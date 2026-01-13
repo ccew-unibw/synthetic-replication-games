@@ -44,6 +44,10 @@ Find the original publication alongside replication data in `/material`.
    > mv experiment_results experiments/<experiment>/
    ```
 
+## Running experiments on a GPU cluster (Docker)
+
+In case you want to run the experiments on a GPU cluster with Docker support, you can reference the `docker-compose.yml` file. Adjust any of the settings as you like and run `docker compose --profile gptoss-120b up` (or `docker compose --profile llama33 up`). This will spin up a vLLM server loading the respective model defined in the profile and then runs the `talkingtomachines` script as soon as the vLLM server is available. 
+
 ## Convert LLM output to dta
 
 The experiment run stores a JSON and CSV file on successful execution. These files need to be converted to a Stata `dta` file, which can be processed by the replication scripts. Run the following script from the root directory of this repository:

@@ -1,0 +1,77 @@
+x-vllm: &vllm
+  image: vllm/vllm-openai:latest
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            device_ids:
+              - "0"
+              - "1"
+              - "2"
+              - "3"
+            capabilities:
+              - gpu
+      limits:
+          cpus: 40
+  shm_size: 100gb
+  healthcheck:
+    test: ["CMD", "curl", "-sf", "http://localhost:8000/v1/models"]
+    interval: 10s
+    timeout: 3s
+    retries: 30
+    start_period: 60s
+  volumes:
+    - ~/.cache/huggingface:/root/.cache/huggingface
+  environment:
+    - HF_TOKEN=$HF_TOKEN
+
+x-t2m: &t2m
+  build: .
+  volumes:
+    - ./:/app
+
+services:
+  vllm-llama33:
+    <<: *vllm
+    profiles: ["llama33"]
+    command: 
+      - --model
+      - nvidia/Llama-3.3-70B-Instruct-FP8
+      - --async-scheduling
+      - --kv-cache-dtype
+      - fp8
+      - --max-num-batched-tokens
+      - "8192"
+      - --tensor-parallel-size
+      - "4"
+
+  vllm-gptoss120b:
+    <<: *vllm
+    profiles: ["gptoss-120b"]
+    command: 
+      - --model
+      - openai/gpt-oss-120b
+      - --async-scheduling
+      - --tensor-parallel-size
+      - "4"
+
+  t2m-llama33:
+    <<: *t2m
+    depends_on:
+      vllm-llama33:
+        condition: service_healthy
+    profiles: ["llama33"]
+    entrypoint: ["sh", "-lc" ]
+    command: |
+      "printf 'full' | uv run talkingtomachines ./experiments/publication/experiment_prompt_template_llama3-3.xlsx"
+  
+  t2m-gptoss120b:
+    <<: *t2m
+    depends_on:
+      vllm-gptoss120b:
+        condition: service_healthy
+    profiles: ["gptoss-120b"]
+    entrypoint: ["sh", "-lc"]
+    command: |
+      "printf '"full" | uv run talkingtomachines ./experiments/publication/experiment_prompt_template_gptoss-120b.xlsx"
