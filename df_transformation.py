@@ -6,7 +6,7 @@ dedup = data.drop_duplicates(subset="CaseID")
 cols = dedup.columns
 dedup = dedup[[cols[0]] + list(cols[15:])]
 
-dedup["FB09"] = dedup["FB09"]*100
+dedup["FB09"] = (dedup["FB09"]*100).round(2).map(lambda x: float(f"{x:.2f}"))
 dedup["ppstaten"] = dedup["ppstaten"].str.upper()
 dedup["fisexp2"] = dedup["fisexp2"].replace({1: "low", 2:"high"})
 
