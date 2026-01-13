@@ -1,0 +1,7 @@
+experiments/publication/experiment_results/team_5_gptoss120b_1_20260113T104635Z.json filter=lfs diff=lfs merge=lfs -text
+experiments/publication/experiment_results/team_5_llama3-370b_1_20260113T114728Z.csv filter=lfs diff=lfs merge=lfs -text
+experiments/publication/experiment_results/team_5_llama3-370b_1_20260113T114728Z.dta filter=lfs diff=lfs merge=lfs -text
+experiments/publication/experiment_results/team_5_llama3-370b_1_20260113T114728Z.json filter=lfs diff=lfs merge=lfs -text
+experiments/publication/experiment_results/team_5_gptoss120b_1_20260113T104635Z.csv filter=lfs diff=lfs merge=lfs -text
+experiments/publication/experiment_results/team_5_gptoss120b_1_20260113T104635Z.dta filter=lfs diff=lfs merge=lfs -text
+experiments/publication/experiment_results/team_5_1_20251216T180530Z.dta filter=lfs diff=lfs merge=lfs -text
