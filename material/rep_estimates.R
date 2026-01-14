@@ -21,6 +21,8 @@ parser <- add_option(parser, c("-i", "--input"), action = "store",
 parser <- add_option(parser, c("-o", "--output"), action = "store",
                      type = "character", default = "orig",
                      help = "Output directory suffix. Defaults to `orig`.")
+parser <- add_option(parser, c("-p", "--adjustprofiles"), action = "store_true",
+                     default = FALSE, help = "Empirically adjust the profiles for Figure 3.")
 
 if (interactive()) {
   # If running this script interactively, set the required arguments here
@@ -447,26 +449,45 @@ predict_with_se <- function(model, newdata) {
   data.frame(pe = as.numeric(pr$fit), se = as.numeric(pr$se.fit))
 }
 
-profiles <- tibble::tribble(
-  ~FeatGender, ~FeatEd, ~FeatLang, ~FeatCountry, ~FeatJob, ~FeatExp, ~FeatPlans, ~FeatReason, ~FeatTrips, ~percentile,
-  2,           2,       4,         8,            4,        2,         4,          3,           5,         0.01,
-  2,           3,       3,         7,            6,        2,         2,          2,           1,         0.25,
-  2,           4,       2,         6,            7,        2,         2,          2,           1,         0.50,
-  2,           5,       2,         3,            9,        2,         2,          2,           3,         0.75,
-  2,           7,       1,         1,            10,       3,         1,          2,           3,         0.99
-) %>%
-  mutate(
-    FeatGender  = factor(FeatGender,  levels = levels(data$FeatGender)),
-    FeatEd      = factor(FeatEd,      levels = levels(data$FeatEd)),
-    FeatLang    = factor(FeatLang,    levels = levels(data$FeatLang)),
-    FeatCountry = factor(FeatCountry, levels = levels(data$FeatCountry)),
-    FeatJob     = factor(FeatJob,     levels = levels(data$FeatJob)),
-    FeatExp     = factor(FeatExp,     levels = levels(data$FeatExp)),
-    FeatPlans   = factor(FeatPlans,   levels = levels(data$FeatPlans)),
-    FeatReason  = factor(FeatReason,  levels = levels(data$FeatReason)),
-    FeatTrips   = factor(FeatTrips,   levels = levels(data$FeatTrips))
-  )
+if (arg$output != "orig" && arg$adjustprofiles) {
+  library(Hmisc)
+  # extract actual profiles from the data
+  i_est <- obs(mod_bench) # get used observations         
+  est_sample <- data[i_est, ]
+  est_sample$estimates <- predict(mod_bench, newdata = est_sample) # calculate admission probability per profile
+  quantiles <- c(.01, .25, .50, .75, .99)
+  qs <- wtd.quantile(est_sample$estimates, weights = est_sample$weight2, probs = c(.01, .25, .50, .75, .99))
+  # extract profiles closest to the respective quantile
+  closest_rows <- sapply(qs, function(q) {
+    which.min(abs(est_sample$estimates - q))
+  })
+  profiles <- est_sample[closest_rows, ]
+  profiles$percentile <- quantiles
+  profiles <- profiles[c("FeatGender", "FeatEd", "FeatLang", "FeatCountry", "FeatJob", "FeatExp", "FeatPlans", "FeatReason", "FeatTrips", "percentile")]
+} else {
+  # For the original study, stick to their profiles
+  profiles <- tibble::tribble(
+    ~FeatGender, ~FeatEd, ~FeatLang, ~FeatCountry, ~FeatJob, ~FeatExp, ~FeatPlans, ~FeatReason, ~FeatTrips, ~percentile,
+    2,           2,       4,         8,            4,        2,         4,          3,           5,         0.01,
+    2,           3,       3,         7,            6,        2,         2,          2,           1,         0.25,
+    2,           4,       2,         6,            7,        2,         2,          2,           1,         0.50,
+    2,           5,       2,         3,            9,        2,         2,          2,           3,         0.75,
+    2,           7,       1,         1,            10,       3,         1,          2,           3,         0.99
+  ) 
+}
 
+profiles <- profiles %>%
+    mutate(
+      FeatGender  = factor(FeatGender,  levels = levels(data$FeatGender)),
+      FeatEd      = factor(FeatEd,      levels = levels(data$FeatEd)),
+      FeatLang    = factor(FeatLang,    levels = levels(data$FeatLang)),
+      FeatCountry = factor(FeatCountry, levels = levels(data$FeatCountry)),
+      FeatJob     = factor(FeatJob,     levels = levels(data$FeatJob)),
+      FeatExp     = factor(FeatExp,     levels = levels(data$FeatExp)),
+      FeatPlans   = factor(FeatPlans,   levels = levels(data$FeatPlans)),
+      FeatReason  = factor(FeatReason,  levels = levels(data$FeatReason)),
+      FeatTrips   = factor(FeatTrips,   levels = levels(data$FeatTrips))
+    )
 preds <- predict_with_se(mod_bench, profiles)
 store <- cbind(preds, profiles)
 

@@ -14,10 +14,11 @@ create comparison plots for both.
 
 Available options:
 
--h, --help      Print this help and exit
--v, --verbose   Print script debug info
--i, --input     Path to the LLM experiment dta file.
--s, --suffix    Suffix for the experiment output directories [Default: exp]
+-h, --help            Print this help and exit
+-v, --verbose         Print script debug info
+-i, --input           Path to the LLM experiment dta file.
+-s, --suffix          Suffix for the experiment output directories [Default: exp]
+-p, --adjustprofile   Empirically extract profiles for Figure 3 [Default: false]
 EOF
   exit
 }
@@ -50,12 +51,14 @@ parse_params() {
   # default values of variables set from params
   input=''
   suffix='exp'
+  profiles=''
 
   while :; do
     case "${1-}" in
     -h | --help) usage ;;
     -v | --verbose) set -x ;;
     --no-color) NO_COLOR=1 ;;
+    -p | --adjustprofile) profiles='-p';;
     -i | --input) # example named parameter
       input="${2-}"
       shift
@@ -71,7 +74,6 @@ parse_params() {
   done
 
   args=("$@")
-
   # check required params and arguments
   [[ -z "${input-}" ]] && die "Missing required parameter: input"
   [[ ${#args[@]} -gt 0 ]] && die "Arguments are not allowed."
@@ -88,7 +90,7 @@ msg "- Input file: ${input}"
 msg "Create estimate files for the original study..."
 Rscript rep_estimates.R
 msg "Create estimate files for the LLM experiment..."
-Rscript rep_estimates.R -i $input -o $suffix
+Rscript rep_estimates.R -i $input -o $suffix $profiles
 
 msg "Create plots for the original study..."
 Rscript rep_plots.r
