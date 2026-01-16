@@ -1,6 +1,6 @@
 # Synthetic replication games
 
-CCEW Contribution in the Dec 15 2025 round of the Synthetic Replication Games (https://talkingtomachines.org/projects/imebess-2025-synthetic-replication-games/).
+[CCEW](https://www.unibw.de/ciss-en/ccew) Contribution in the Dec 16 2025 round of the Synthetic Replication Games (https://talkingtomachines.org/projects/imebess-2025-synthetic-replication-games/).
 
 ## Original publication
 
