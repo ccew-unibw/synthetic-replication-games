@@ -94,3 +94,11 @@ The experiment has been run three times. Initially, a subset of two profiles hav
 | 3 | full | llama-3.3-70b | ``experiments/publication/experiment_prompt_template_llama3-3.xlsx`` | ``experiments/publication/experiment_results/team_5_llama3-370b_1_20260113T114728Z.json`` |
 
 The respective JSON output files for experiments 2 and 3 are converted back to the original data frame with `uv run output_to_dta.py [OUTPUT_JSON]` (see ``README.md``). These `.dta` files are then served as input to the `material/generate_plots.sh` (see ``README.md``), to perform the original analysis and create the corresponding plots. 
+
+**Lllama 3.3 70b comparison plot (Figure 2: Effects of Immigrant Attributes on Probability of Being Preferred forAdmission):**
+
+<img src="./fig2_llama.png" width="800">
+
+**GPT OSS 120b comparison plot (Figure 2: Effects of Immigrant Attributes on Probability of Being Preferred forAdmission):**
+
+<img src="./fig2_gptoss.png" width="800">
