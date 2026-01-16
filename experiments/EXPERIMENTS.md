@@ -78,7 +78,7 @@ The resulting treatment data is manually copied from `treatments.xlsx` into the 
 
 ### Prompt setup
 
-As this is a conjoint experiment, we assign one treatment set to one participant, which is the only member of a group (besides the facilitator). For prompting, this means that every group (i.e. every participant) is presented with an initial round of one prompt explaining the setup of the experiment. This is followed by the pair of immigrants taken from the treatment's `text` attribute and three questions as separate rounds ("If you had to choose between them, which of these two immigrants should be given priority to come to the United States to live?", "On a scale from 1 to 7, where 1 indicates that the United States should absolutely not admit the immigrant and 7 indicates that the United States should definitely admit the immigrant, how would you rate Immigrant 1?" and "Using the same scale, how would you rate immigrant 2?"). This is repeated for all five immigrant profile pairs, yielding 21 rounds of contexts and questions per group.
+As this is a conjoint experiment, we assign one treatment set to one participant, who is the only member of a group (besides the facilitator). Every pre-generated treatment is assigned to exactly one participant (`complete_random` setting). For prompting, this means that every group (i.e. every participant) is presented with an initial round of one prompt explaining the setup of the experiment. This is followed by the pair of immigrants taken from the treatment's `text` attribute and three questions as separate rounds ("If you had to choose between them, which of these two immigrants should be given priority to come to the United States to live?", "On a scale from 1 to 7, where 1 indicates that the United States should absolutely not admit the immigrant and 7 indicates that the United States should definitely admit the immigrant, how would you rate Immigrant 1?" and "Using the same scale, how would you rate immigrant 2?"). This is repeated for all five immigrant profile pairs, yielding 21 rounds of contexts and questions per group.
 
 See the respective experiment prompt template Excel files for more details.
 
@@ -89,8 +89,8 @@ The experiment has been run three times. Initially, a subset of two profiles hav
 <!--- TODO: update table! -->
 | ID | Description | Model | Prompt file | Output |
 | -- | ----------- | ----- | ----------- | ------ |
-| 1 | 2 profiles | gpt-5-nano | ``experiment_prompt_template.xlsx`` | ``team_5_1_20251216T180530Z.json`` |
-| 2 | full | gpt-oss-120b | ``experiment_prompt_template_gptoss.xlsx`` | ``team_5_1_20251216T180530Z.json`` |
-| 3 | full | llama-3.3-70b | ``experiment_prompt_template_llama3-3.xlsx`` | ``team_5_1_20251216T180530Z.json`` |
+| 1 | 2 profiles | gpt-5-nano | ``experiments/publication/experiment_prompt_template.xlsx`` | ``experiments/publication/experiment_results/team_5_1_20251216T180530Z.json`` |
+| 2 | full | gpt-oss-120b | ``experiments/publication/experiment_prompt_template_gptoss-120b`` | ``experiments/publication/experiment_results/team_5_gptoss120b_1_20260113T104635Z.json`` |
+| 3 | full | llama-3.3-70b | ``experiments/publication/experiment_prompt_template_llama3-3.xlsx`` | ``experiments/publication/experiment_results/team_5_llama3-370b_1_20260113T114728Z.json`` |
 
 The respective JSON output files for experiments 2 and 3 are converted back to the original data frame with `uv run output_to_dta.py [OUTPUT_JSON]` (see ``README.md``). These `.dta` files are then served as input to the `material/generate_plots.sh` (see ``README.md``), to perform the original analysis and create the corresponding plots. 

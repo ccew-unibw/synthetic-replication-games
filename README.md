@@ -4,7 +4,7 @@
 
 > Hainmueller, J., & Hopkins, D. J. (2014). The Hidden American Immigration Consensus: A Conjoint Analysis of Attitudes toward Immigrants. American Journal of Political Science, 59(3), 529–548. https://doi.org/10.1111/ajps.12138
 
-Find the original publication alongside replication data in `/material`.
+Find the original publication alongside replication data in `/material`. A description of the experimental setup can be found in `experiments/EXPERIMENTS.md`.
 
 ## Requirements
 
