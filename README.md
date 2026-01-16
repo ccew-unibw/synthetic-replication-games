@@ -1,5 +1,7 @@
 # Synthetic replication games
 
+CCEW Contribution in the Dec 15 2025 round of the Synthetic Replication Games (https://talkingtomachines.org/projects/imebess-2025-synthetic-replication-games/).
+
 ## Original publication
 
 > Hainmueller, J., & Hopkins, D. J. (2014). The Hidden American Immigration Consensus: A Conjoint Analysis of Attitudes toward Immigrants. American Journal of Political Science, 59(3), 529–548. https://doi.org/10.1111/ajps.12138
